@@ -1,0 +1,71 @@
+# The process is really cool. This is a multi-stage docker image. 
+# First we use the rust-musl-builder to build our application. 
+# When this is done, we can 
+
+
+
+FROM ekidd/rust-musl-builder:stable as builder
+
+
+# Create a new cargo crate with grpc-test for initialization reasons only
+RUN USER=root cargo new --bin grpc-test
+WORKDIR ./grpc-test
+
+# Add all the files from host machine to container. Please note that .dockerignore is used not to copy unnecessary stuff.
+ADD . ./
+
+RUN cargo build --release
+
+
+# Remove all source code files. 
+# Remove folders in the release directory that are not needed.
+RUN rm src/*.rs \
+    && rm -r ./target/x86_64-unknown-linux-musl/release/build \
+    && rm -r ./target/x86_64-unknown-linux-musl/release/examples \
+    && rm -r ./target/x86_64-unknown-linux-musl/release/deps \
+    && rm -r ./target/x86_64-unknown-linux-musl/release/incremental \
+    && rm -r ./target/x86_64-unknown-linux-musl/release/*.d \
+    #&& rm -r ./target/x86_64-unknown-linux-musl/release/*.rlib \
+    && echo "gRPC-Test Image has been built in the 'builder' image."
+
+# Use Alpine linux
+FROM alpine:latest
+
+# App will run from this location
+ARG APP=/usr/src/app
+
+# These are the ports exposed for use.
+ARG SERVERPORT
+#EXPOSE $SERVERPORT 50051
+EXPOSE 50051
+
+# Set timezone, and permissions for users.
+ENV TZ=Etc/UTC \
+    APP_USER=appuser
+
+RUN addgroup -S $APP_USER \
+    && adduser -S -g $APP_USER $APP_USER
+
+# Add ca-certificate and bash - comes in handy.
+RUN apk update \
+    && apk add --no-cache ca-certificates tzdata \
+    && rm -rf /var/cache/apk/* \
+    && apk add --no-cache bash
+
+# Copy the built code to the app folder
+# Note that we're getting this from the builder container here!
+# Please note that here we're adding files manually for a reason: If we copy all the folder and remove stuff  later , 
+# the container size will still be huge. Don't try to be clever :)
+COPY --from=builder /home/rust/src/grpc-test/target/x86_64-unknown-linux-musl/release/* ${APP}/
+
+# Set permission to user to access app
+RUN chown -R $APP_USER:$APP_USER ${APP} \
+    && RUST_BACKTRACE="1" \
+    && RUST_LOG="debug"
+
+
+USER $APP_USER
+WORKDIR ${APP}
+
+# Run the application. Server by default
+CMD server
