@@ -1,0 +1,48 @@
+name: grpc-test-client
+version: "1.0"
+author: Clyde Farrugia<c.farrugia@betagy.com>
+about: Client application for grpc
+args:
+    - serverhost:
+        short: h
+        long: serverhost
+        help: Addr to the server host
+        takes_value: true
+        default_value: "localhost"
+    - serverport:
+        short: p
+        long: serverport
+        help: Port to the server host
+        takes_value: true
+        default_value: "50051"
+    - number_of_threads:
+        short: t
+        long: number_of_threads`
+        help: Number of threads to send requests
+        default_value: "2"    
+    - delay_ms_between_calls:
+        short: d
+        long: delay_calls
+        help: Delay in millis between calls
+        default_value: "0"
+    - verbose_err_responses:
+        short: e
+        long: verbose_err
+        help: whether errors are verbose or not (false, true)
+        default_value: "false"
+    - verbose_ok_responses:
+        short: o
+        long: verbose_ok
+        help: whether ok responses are verbose or not (false, true)
+        default_value: "false"
+    - show_metrics:
+        short: m
+        long: show_metrics
+        help: Periodically output performance metrics (false, true)
+        default_value: "true"
+    - delay_s_between_metric_report:
+        short: r
+        long: delay_show_metrics
+        help: Delay in seconds between each metric output
+        default_value: "5"
+            

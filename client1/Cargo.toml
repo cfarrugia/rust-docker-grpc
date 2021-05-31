@@ -1,0 +1,20 @@
+[package]
+name = "client"
+version = "0.1.0"
+authors = ["Clyde Farrugia <c.farrugia@betagy.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "*", features = ["yaml"] }
+rand = "*"
+tonic = "0.4"
+ginepro = "*"
+prost = "0.7"
+futures = "*"
+backoff = { version = "0.3", features = ["tokio"] }
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+
+[build-dependencies]
+tonic-build = "0.4"
