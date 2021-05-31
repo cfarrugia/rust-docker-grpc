@@ -5,10 +5,7 @@ services:
   grpc-server:
     image: grpc-test:latest 
     hostname: grpc-server
-    #container_name: grpc-server
     command: ./server -h 0.0.0.0 -p 50051
-    # ports:
-    #     - "50051:50050"
     deploy:
       replicas: 4
 
@@ -16,8 +13,7 @@ services:
   grpc-client:
     image: grpc-test:latest 
     hostname: grpc-client
-    #container_name: grpc-client
-    command: ./client -h grpc-server -p 50051
+    command: ./client -h grpc-server -p 50051 -t 500
     deploy:
       replicas: 4
 
