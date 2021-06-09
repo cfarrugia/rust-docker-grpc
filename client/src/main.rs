@@ -35,6 +35,32 @@ static GLOBAL_RETRY_COUNT: AtomicUsize = AtomicUsize::new(0);
 static GLOBAL_ERR_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 
+macro_rules! grpc_retry {
+    ($op:expr) => ({
+        grpc_retry!($op, |_ ,  _| { })
+    });
+    ($op:expr, $notify: expr) => {{
+
+        let INITIAL_INTERVAL_MILLIS = 200;
+        let RANDOMIZATION_FACTOR = 0.5;
+        let MULTIPLIER = 2.0;
+        let MAX_ELAPSED_TIME_SECONDS = 5;
+        let MAX_INTERVAL_MILLIS = 1500;
+
+        //
+        let mut exp = ExponentialBackoff::default();
+        exp.current_interval = Duration::from_millis(INITIAL_INTERVAL_MILLIS);
+        exp.initial_interval = Duration::from_millis(INITIAL_INTERVAL_MILLIS);
+        exp.randomization_factor = RANDOMIZATION_FACTOR;
+        exp.multiplier = MULTIPLIER;
+        exp.max_interval = Duration::from_secs(MAX_INTERVAL_MILLIS);
+        exp.max_elapsed_time = Some(Duration::new(MAX_ELAPSED_TIME_SECONDS, 0));
+        exp.reset();
+    
+
+        retry_notify(exp, $op, $notify).await
+    }};
+}
 
 
 #[tokio::main]
@@ -119,25 +145,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 tokio::time::sleep(Duration::from_millis(delay_ms_between_calls)).await;
             }
 
-            let INITIAL_INTERVAL_MILLIS = 200;
-            let RANDOMIZATION_FACTOR = 0.5;
-            let MULTIPLIER = 2.0;
-            let MAX_ELAPSED_TIME_SECONDS = 5;
-            let MAX_INTERVAL_MILLIS = 1500;
-
-            //
-            let mut exp = ExponentialBackoff::default();
-            exp.current_interval = Duration::from_millis(INITIAL_INTERVAL_MILLIS);
-            exp.initial_interval = Duration::from_millis(INITIAL_INTERVAL_MILLIS);
-            exp.randomization_factor = RANDOMIZATION_FACTOR;
-            exp.multiplier = MULTIPLIER;
-            exp.max_interval = Duration::from_secs(MAX_INTERVAL_MILLIS);
-            exp.max_elapsed_time = Some(Duration::new(MAX_ELAPSED_TIME_SECONDS, 0));
-            exp.reset();
-            
-
-
-            // Notify when retrying! 
+            //Notify when retrying! 
             let notify = |err, dur| { 
                 let _ = GLOBAL_RETRY_COUNT.fetch_add(1, Ordering::SeqCst);
                     if verbose_err_responses {
@@ -163,7 +171,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Ok(c2.say_hello(request).await?)
             };
 
-            match retry_notify(exp, op ,notify).await {
+            let res = grpc_retry!(op, notify);
+            match res {
                 Ok(resp) => {
                     let _ = GLOBAL_OK_COUNT.fetch_add(1, Ordering::SeqCst);
                     if verbose_ok_responses {
